@@ -145,53 +145,60 @@ Escalate calls to a human agent when:
 
 ## High Level Architecture
 
-Caller
-↓
-Twilio Voice
-↓
-WebSocket Audio Stream
-↓
-FastAPI Gateway
-↓
-Speech-to-Text
-↓
-LangGraph Agent
-├── Memory
-├── Router
-├── RAG Retrieval
-├── Scheduling Tool
-├── CRM Tool
-├── Human Handoff Tool
-└── Response Generator
-↓
-Text-to-Speech
-↓
-Audio Stream
-↓
-Caller
+```mermaid
+flowchart TD
+    A[Caller] --> B[Twilio Voice]
+    B --> C[WebSocket Audio Stream]
+    C --> D[FastAPI Gateway]
+    D --> E[Speech-to-Text]
+
+    E --> F[LangGraph Agent]
+
+    F --> G[Conversation Memory]
+    F --> H[Intent Router]
+    F --> I[RAG Knowledge Base]
+    F --> J[Appointment Scheduler]
+    F --> K[CRM Integration]
+    F --> L[Human Handoff]
+
+    G --> M[Response Generator]
+    H --> M
+    I --> M
+    J --> M
+    K --> M
+    L --> M
+
+    M --> N[Text-to-Speech]
+    N --> O[Audio Stream]
+    O --> A
+```
 
 ---
 
 ## Planned LangGraph Workflow
 
-START
-↓
-Memory Node
-↓
-Intent Router
-↓
-Tool Selection
-├── Knowledge Base
-├── Appointment Scheduler
-├── CRM Lookup
-├── Human Escalation
-└── General Conversation
-↓
-Response Generator
-↓
-TTS Output
-↓
-END
+```mermaid
+flowchart TD
+
+    A[Start] --> B[Load Session Memory]
+
+    B --> C[Intent Router]
+
+    C --> D[Knowledge Base Query]
+    C --> E[Appointment Scheduling]
+    C --> F[CRM Lookup]
+    C --> G[Human Escalation]
+    C --> H[General Conversation]
+
+    D --> I[Response Generator]
+    E --> I
+    F --> I
+    G --> I
+    H --> I
+
+    I --> J[Text-to-Speech]
+    J --> K[End]
+```
 
 ---
 
