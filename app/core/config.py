@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    DEEPGRAM_API_KEY: str
+
     class Config:
         env_file = ".env"
 
