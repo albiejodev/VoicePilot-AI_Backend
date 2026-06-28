@@ -9,9 +9,14 @@ from app.core.metrics import (
     MESSAGES_RECEIVED,
     MESSAGES_SENT
 )
+import json
+from app.services.stt.deepgram_service import DeepgramService
+from app.utils.audio import decode_base64_audio 
 
 
 router = APIRouter()
+
+
 
 
 @router.websocket("/ws/{session_id}")
@@ -24,52 +29,99 @@ async def websocket_endpoint(
         websocket
     )
 
+    async def process_transcript(
+    transcript: str
+    ):
+        logger.info(
+            "processing_transcript",
+            transcript=transcript
+        )
+
+        result = graph.invoke(
+            {
+                "session_id": session_id,
+                "user_message": transcript,
+                "answer": ""
+            }
+        )
+
+        logger.info(
+            "graph_response",
+            response=result
+        )
+        
+        await manager.send_message(
+        session_id,
+        json.dumps(
+            {
+                "type":"ai_response",
+                "data":result
+            }
+        )
+        )
+    deepgram_service = DeepgramService(transcript_callback=process_transcript)
+
+    await deepgram_service.connect()
+
     try:
 
         while True:
 
-            message = await websocket.receive_text()
+            raw_message = await websocket.receive_text()
+            payload = json.loads(raw_message)
 
             logger.info(
             "message_received",
             session_id=session_id,
-            message_length=len(message)
+            message_type=payload.get("type")
             )
 
-            MESSAGES_RECEIVED.inc()
+            if payload["type"] == "audio":
 
-            start_time = time.time()
+                audio_bytes = decode_base64_audio(
+                    payload["audio"]
+                )
 
-            GRAPH_EXECUTIONS.inc()
+                await deepgram_service.send_audio(
+                    audio_bytes
+                )
 
-            result = graph.invoke(
-                {
-                    "session_id":session_id,
-                    "user_message":message,
-                    "answer":""
-                }
-            )
+                logger.info(
+                    "audio_sent_to_deepgram",
+                    size=len(audio_bytes)
+                )
 
-            execution_time = (
-                time.time() - start_time
-            )
+                continue
 
-            GRAPH_EXECUTION_TIME.observe(
-                execution_time
-            )
+            # MESSAGES_RECEIVED.inc()
 
-            await manager.send_message(
-                session_id,
-                result
-            )
+            # start_time = time.time()
 
-            MESSAGES_SENT.inc()
+            # GRAPH_EXECUTIONS.inc()
 
-            logger.info(
-                "message_sent",
-                session_id=session_id,
-                execution_time=execution_time
-            )
+            # result = graph.invoke(
+            #     {
+            #         "session_id":session_id,
+            #         "user_message":raw_message,
+            #         "answer":""
+            #     }
+            # )
+
+            # execution_time = (
+            #     time.time() - start_time
+            # )
+
+            # GRAPH_EXECUTION_TIME.observe(
+            #     execution_time
+            # )
+
+            # await manager.send_message(
+            #     session_id,
+            #     result
+            # )
+
+            # MESSAGES_SENT.inc()
+
 
 
 
@@ -80,7 +132,7 @@ async def websocket_endpoint(
             session_id=session_id,
             error=str(e)
         )
-
+        await deepgram_service.disconnect()
         manager.disconnect(session_id)
 
         logger.info(

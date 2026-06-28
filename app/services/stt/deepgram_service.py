@@ -1,9 +1,89 @@
-class DeepgramService:
-    async def connect(self):
-        pass
+import websockets
+import asyncio
+import json
+from app.core.config import settings
+from app.core.logger import logger
 
-    async def send_audio(self, chunk):
-        pass
+
+class DeepgramService:
+
+    def __init__(self,transcript_callback=None):
+        self.websocket = None
+        self.transcript_callback=transcript_callback
+
+
+
+    async def connect(self):
+
+        url = (
+            "wss://api.deepgram.com/v1/listen"
+            "?model=nova-3"
+            "&language=en"
+            "&interim_results=true"
+            "&smart_format=true"
+        )
+
+        self.websocket = await websockets.connect(
+            url,
+            additional_headers={
+                "Authorization": f"Token {settings.DEEPGRAM_API_KEY}"
+            },
+        )
+
+        logger.info("deepgram_connected")
+
+        asyncio.create_task(self.receive_transcripts())
+
+
+
+
+    async def send_audio(self, audio_bytes: bytes):
+
+        if self.websocket:
+
+            await self.websocket.send(audio_bytes)
+
+
+
+
+    async def receive_transcripts(self):
+
+        while True:
+            try:
+                message = await self.websocket.recv()
+
+                data = json.loads(message)
+
+                transcript = (
+                    data.get("channel", {})
+                    .get("alternatives", [{}])[0]
+                    .get("transcript", "")
+                )
+
+                is_final = data.get("is_final", False)
+
+                if transcript:
+                    logger.info(
+                        "transcript_received",
+                        transcript=transcript,
+                        is_final=is_final,
+                    )
+
+                if(is_final and self.transcript_callback):
+                    
+                    await self.transcript_callback(transcript)
+
+            except websockets.ConnectionClosed:
+                logger.info("deepgram_connection_closed")
+                break
+
+
 
     async def disconnect(self):
-        pass
+
+        if self.websocket:
+            await self.websocket.close()
+
+            logger.info(
+                "deepgram_disconnected"
+            )

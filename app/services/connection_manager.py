@@ -12,8 +12,6 @@ class ConnectionManager:
             WebSocket
             ] = {}
 
-
-
     async def connect(
     self,
     session_id: str,
@@ -26,6 +24,10 @@ class ConnectionManager:
                 session_id
             ].close() 
 
+        self.active_connections[
+            session_id
+        ] = websocket
+
         ACTIVE_CONNECTIONS.inc()
 
 
@@ -34,8 +36,6 @@ class ConnectionManager:
             session_id=session_id,
             total_connections=len(self.active_connections)
         )
-
-
 
 
     def disconnect(
@@ -59,12 +59,10 @@ class ConnectionManager:
                 )
             )
 
-
-
     async def send_message(
         self,
         session_id:str,
-        data:dict[str,any]
+        data:dict[str,Any]
     ):
 
         websocket = self.active_connections.get(
@@ -74,8 +72,6 @@ class ConnectionManager:
         if websocket:
 
             await websocket.send_json(data)
-
-
 
 
     def get_connection_count(
