@@ -73,3 +73,7 @@ credentials.json
 # Misc
 *.swp
 *.swo
+
+# Google OAuth
+token.json
+client_secret.json

@@ -12,6 +12,8 @@ class ConnectionManager:
             WebSocket
             ] = {}
 
+
+
     async def connect(
     self,
     session_id: str,
@@ -38,6 +40,9 @@ class ConnectionManager:
         )
 
 
+
+
+
     def disconnect(
         self,
         session_id: str
@@ -59,19 +64,61 @@ class ConnectionManager:
                 )
             )
 
+
     async def send_message(
         self,
-        session_id:str,
-        data:dict[str,Any]
+        session_id: str,
+        data: dict[str, Any],
     ):
 
-        websocket = self.active_connections.get(
-            session_id
-        )
+        websocket = self.active_connections.get(session_id)
 
-        if websocket:
+        if websocket is None:
+            return
 
+        try:
             await websocket.send_json(data)
+
+        except Exception as e:
+
+            logger.exception(
+                "send_message_failed",
+                session_id=session_id,
+                error=str(e),
+            )
+
+            self.disconnect(session_id)
+
+
+
+
+
+    async def send_audio(
+        self,
+        session_id: str,
+        audio: bytes,
+    ):
+
+        websocket = self.active_connections.get(session_id)
+
+        if websocket is None:
+            return
+
+        try:
+            await websocket.send_bytes(audio)
+
+        except Exception as e:
+
+            logger.exception(
+                "send_audio_failed",
+                session_id=session_id,
+                error=str(e),
+            )
+
+            self.disconnect(session_id)
+
+
+
 
 
     def get_connection_count(

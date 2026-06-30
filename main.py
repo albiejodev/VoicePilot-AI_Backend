@@ -7,7 +7,8 @@ from app.core.startup import validate_services
 from app.middleware.request_id import (RequestIdMiddleware)
 from app.middleware.logging import (LoggingMiddleware)
 from app.core.exceptions import (global_exception_handler)
-
+from app.core.redis import redis_client
+from app.core.logger import logger
 
 app = FastAPI()
 
@@ -28,4 +29,14 @@ app.include_router(metric_router)
 @app.on_event("startup")
 async def startup():
 
+    await redis_client.ping()
+    logger.info("redis connected")
     validate_services()
+
+
+
+@app.on_event("shutdown")
+async def shutdown():
+
+    await redis_client.close()
+    logger.info("redis disconnected")
